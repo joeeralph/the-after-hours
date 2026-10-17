@@ -16,7 +16,7 @@ python3 -m venv .venv
 
 The password command prompts privately; use a unique password with at least 12 characters. There is no default password. The public page works before administrator setup; sign-in stays unavailable until the password is created. To reset it, rerun the command. Never put a password in Git or chat.
 
-In the dashboard you can add, edit and delete gigs and YouTube videos, set a booking email, and change the introduction, logo and band photograph. Images currently require direct HTTPS image links; file uploading and non-YouTube video hosting are not included. Dates use the server's calendar day; configure the server timezone to match the band's location before deployment.
+In the dashboard you can add, edit and delete gigs and YouTube videos, set a booking email, and change the introduction, logo and band photograph. Images currently require direct HTTPS image links; file uploading and non-YouTube video hosting are not included. Upcoming gigs use the San Francisco calendar day (America/Los_Angeles), including daylight saving time, regardless of the server timezone.
 
 ## Validation
 

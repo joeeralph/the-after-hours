@@ -1,11 +1,22 @@
 {% extends 'base.html' %}{% block body %}
-<header class="nav"><a class="brand" href="#">THE AFTER HOURS<span>LIVE MUSIC · GOOD COMPANY</span></a><nav aria-label="Main navigation"><a href="#gigs">Gigs</a><a href="#videos">Videos</a><a href="#contact">Contact</a></nav></header>
+<header class="nav"><a class="brand" href="#">THE AFTER HOURS<span>LIVE MUSIC · GOOD COMPANY</span></a><nav aria-label="Main navigation"><a href="#band">The band</a><a href="#gigs">Gigs</a><a href="#videos">Videos</a><a href="#contact">Contact</a></nav></header>
 <main><section class="hero wrap" aria-label="The After Hours band">
 <div class="hero-copy"><p class="eyebrow">TURN IT UP. STAY A LITTLE LONGER.</p><h1 class="sr-only">The After Hours</h1><div class="logo-panel"><img class="logo" src="{{ settings.get('logo') or url_for('static', filename='images/moon-logo.png') }}" alt="The After Hours moon logo" width="1774" height="887"></div></div>
-<div class="hero-welcome"><p class="eyebrow">LIVE MUSIC · GOOD COMPANY</p><h2>For the nights<br>you wish would<br><em>never end.</em></h2><p class="intro">{{ settings.get('intro') or 'Live music. A room full of friends. A night to remember. This is The After Hours.' }}</p><a class="button" href="#gigs">Catch us live <span>↗</span></a></div>
+<div class="hero-welcome"><p class="eyebrow">LIVE MUSIC · GOOD COMPANY</p><h2>For the nights<br>you wish would<br><em>never end.</em></h2><p class="intro">{{ settings.get('intro') or 'San Francisco roots. Bay Area nights. Classic R&B, pop, rock and funk—a mix of covers and originals from The After Hours.' }}</p><a class="button" href="#gigs">Catch us live <span>↗</span></a></div>
 <div class="hero-art"><img src="{{ settings.get('photo') or url_for('static', filename='images/band-live.png') }}" alt="The After Hours band artwork featuring the musicians performing against a moonlit San Francisco skyline" width="1536" height="1024" fetchpriority="high"><div class="art-label">BEST EXPERIENCED LIVE.</div></div>
 </section>
 <div class="ticker" aria-hidden="true">LIVE MUSIC &nbsp; / &nbsp; LATE NIGHTS &nbsp; / &nbsp; THE AFTER HOURS &nbsp; / &nbsp; LIVE MUSIC &nbsp; / &nbsp; LATE NIGHTS</div>
+<section id="band" class="wrap section band-section" aria-labelledby="band-title">
+<div class="section-heading"><div><p class="eyebrow">SAN FRANCISCO · SF BAY AREA</p><h2 id="band-title">Meet the band<span>.</span></h2></div></div>
+<p class="band-intro">Based in San Francisco and playing gigs around the SF Bay Area, The After Hours brings together classic R&amp;B, pop, rock and funk with a mix of covers and original songs.</p>
+<ul class="band-lineup">
+<li><h3>Rachel Tsacle</h3><p>Vocals</p></li>
+<li><h3>Rob Headlee</h3><p>Vocals &amp; guitar</p></li>
+<li><h3>Bryan Weinberg</h3><p>Lead guitar</p></li>
+<li><h3>Zusje Helderman</h3><p>Bass</p></li>
+<li><h3>Joe Ralph</h3><p>Keyboards</p></li>
+<li><h3>Nasser Addi</h3><p>Drums</p></li>
+</ul></section>
 <section id="gigs" class="wrap section"><div class="section-heading"><div><p class="eyebrow">MEET US OUT THERE</p><h2>Upcoming gigs<span>.</span></h2></div><span class="small">See you at the front.</span></div>{% for gig in gigs %}<article class="gig"><time datetime="{{ gig.day }}">{{ gig.day }}</time><div><h3>{{ gig.venue }}</h3><p>{{ gig.location }}</p></div>{% if gig.link %}<a class="outline" href="{{ gig.link }}" target="_blank" rel="noopener noreferrer">Event details ↗</a>{% else %}<span class="small">Details coming soon</span>{% endif %}</article>{% else %}<div class="empty"><h3>The next night out is on its way.</h3><p>New dates will be announced here. Check back soon.</p></div>{% endfor %}</section>
 <section id="videos" class="wrap section"><div class="section-heading"><div><p class="eyebrow">GET A FEEL FOR THE NIGHT</p><h2>Press play<span>.</span></h2></div>{% if settings.get('youtube') %}<a class="small" href="{{ settings.youtube }}" target="_blank" rel="noopener noreferrer">Our YouTube ↗</a>{% endif %}</div><div class="video-grid">{% for video in videos %}<article><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/{{ video.video_id }}" title="{{ video.title }}" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe><h3>{{ video.title }}</h3></article>{% else %}<div class="empty"><h3>A little taste of The After Hours.</h3><p>Live clips and band videos are coming soon.</p></div>{% endfor %}</div></section>
 <section id="contact" class="contact wrap"><p class="eyebrow">LET’S MAKE A NIGHT OF IT</p><h2>Your place.<br>Our soundtrack.</h2>{% if settings.get('email') %}<a class="button" href="mailto:{{ settings.email }}">Book the band ↗</a>{% else %}<p>Booking details coming soon.</p>{% endif %}</section></main><footer class="wrap">THE AFTER HOURS<span>Good music. Great nights.</span></footer>

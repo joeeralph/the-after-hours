@@ -2,7 +2,8 @@ import getpass
 import os
 import secrets
 import sqlite3
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from functools import wraps
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -87,7 +88,7 @@ def create_app(test_config=None):
     @app.get('/')
     def home():
         with db() as conn:
-            gigs = conn.execute('SELECT * FROM gigs WHERE day >= ? ORDER BY day, id', (date.today().isoformat(),)).fetchall()
+            gigs = conn.execute('SELECT * FROM gigs WHERE day >= ? ORDER BY day, id', (datetime.now(ZoneInfo('America/Los_Angeles')).date().isoformat(),)).fetchall()
             videos = conn.execute('SELECT * FROM videos ORDER BY id DESC').fetchall()
         return render_template('home.html', gigs=gigs, videos=videos, settings=settings())
 
