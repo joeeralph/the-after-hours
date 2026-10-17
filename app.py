@@ -42,6 +42,17 @@ def create_app(test_config=None):
         CREATE TABLE IF NOT EXISTS settings (name TEXT PRIMARY KEY, value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS login_attempts (address TEXT PRIMARY KEY, count INTEGER NOT NULL, started INTEGER NOT NULL);
         ''')
+        if 'is_short' not in {row['name'] for row in conn.execute('PRAGMA table_info(videos)')}:
+            conn.execute('ALTER TABLE videos ADD COLUMN is_short INTEGER NOT NULL DEFAULT 0')
+        if not conn.execute("SELECT 1 FROM settings WHERE name='initial_videos_added'").fetchone():
+            for title, video_id, is_short in [
+                ('The After Hours · Band video', '274AIJQ-sXM', 0),
+                ('The After Hours · YouTube Short', '7JeuGzJA9nQ', 1),
+            ]:
+                if not conn.execute('SELECT 1 FROM videos WHERE video_id=?', (video_id,)).fetchone():
+                    conn.execute('INSERT INTO videos(title, video_id, is_short) VALUES (?, ?, ?)',
+                                 (title, video_id, is_short))
+            conn.execute("INSERT INTO settings VALUES ('initial_videos_added', '1')")
 
     def settings():
         with db() as conn:
@@ -160,10 +171,11 @@ def create_app(test_config=None):
                     title = request.form['title'].strip()[:160]
                     if not title:
                         raise ValueError('Enter a video title.')
+                    is_short = int(parsed.hostname in ('youtube.com', 'www.youtube.com', 'm.youtube.com') and parsed.path.startswith('/shorts/'))
                     if request.form.get('id'):
-                        conn.execute('UPDATE videos SET title=?, video_id=? WHERE id=?', (title, video_id, int(request.form['id'])))
+                        conn.execute('UPDATE videos SET title=?, video_id=?, is_short=? WHERE id=?', (title, video_id, is_short, int(request.form['id'])))
                     else:
-                        conn.execute('INSERT INTO videos(title, video_id) VALUES (?, ?)', (title, video_id))
+                        conn.execute('INSERT INTO videos(title, video_id, is_short) VALUES (?, ?, ?)', (title, video_id, is_short))
                 elif kind == 'settings':
                     for name in ('intro', 'email', 'photo', 'logo', 'youtube'):
                         value = request.form.get(name, '').strip()

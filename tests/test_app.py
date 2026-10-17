@@ -1,5 +1,6 @@
 import re
 import tempfile
+import sqlite3
 import unittest
 from pathlib import Path
 from werkzeug.security import generate_password_hash
@@ -10,6 +11,8 @@ class BandSiteTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.app = create_app({'TESTING': True, 'DATA_DIR': self.tmp.name})
+        with sqlite3.connect(Path(self.tmp.name, 'band.sqlite3')) as conn:
+            conn.execute('DELETE FROM videos')
         Path(self.tmp.name, 'admin.hash').write_text(generate_password_hash('a-long-test-password'))
         self.client = self.app.test_client()
 
@@ -61,6 +64,21 @@ class BandSiteTest(unittest.TestCase):
         for _ in range(10):
             self.client.post('/admin/login', data={'csrf': self.token('/admin/login'), 'password': 'incorrect'})
         self.assertEqual(self.login().status_code, 429)
+
+    def test_supplied_videos_persist_and_deleted_video_stays_deleted(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = {'TESTING': True, 'DATA_DIR': folder}
+            app = create_app(config)
+            page = app.test_client().get('/').get_data(as_text=True)
+            for video_id in ('7JeuGzJA9nQ', '274AIJQ-sXM'):
+                self.assertIn('youtube-nocookie.com/embed/' + video_id, page)
+                self.assertIn('href="https://www.youtube.com/', page)
+            self.assertIn('video-card short-video', page)
+            with sqlite3.connect(Path(folder, 'band.sqlite3')) as conn:
+                conn.execute("DELETE FROM videos WHERE video_id='7JeuGzJA9nQ'")
+            page = create_app(config).test_client().get('/').get_data(as_text=True)
+            self.assertNotIn('7JeuGzJA9nQ', page)
+            self.assertEqual(page.count('youtube-nocookie.com/embed/274AIJQ-sXM'), 1)
 
 
 if __name__ == '__main__':
