@@ -45,7 +45,8 @@ def create_app(test_config=None):
 
     def settings():
         with db() as conn:
-            return dict(conn.execute('SELECT name, value FROM settings').fetchall())
+            return {'email': 'theafterhourssf@gmail.com',
+                    **dict(conn.execute('SELECT name, value FROM settings').fetchall())}
 
     def csrf():
         if 'csrf' not in session:
