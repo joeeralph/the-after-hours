@@ -88,20 +88,28 @@ def register_band_admin(app, db, current_user, private, admin_only):
     @private
     def save_availability():
         try:
-            day = date.fromisoformat(request.form['day']).isoformat()
+            start = date.fromisoformat(request.form['day'])
+            end = date.fromisoformat(request.form.get('end_day') or request.form['day'])
+            days = (end - start).days + 1
+            if not 1 <= days <= 366 or not 1901 <= start.year <= end.year <= 9998:
+                raise ValueError
             status = request.form['status']
             if status not in ('available', 'unavailable', 'maybe', 'unknown'):
                 raise ValueError
+            user_id = current_user()['id']
             with db() as conn:
                 if status == 'unknown':
-                    conn.execute('DELETE FROM availability WHERE user_id=? AND day=?', (current_user()['id'], day))
+                    conn.execute('DELETE FROM availability WHERE user_id=? AND day BETWEEN ? AND ?',
+                                 (user_id, start.isoformat(), end.isoformat()))
                 else:
-                    conn.execute('INSERT OR REPLACE INTO availability VALUES (?, ?, ?, ?)',
-                                 (current_user()['id'], day, status, request.form.get('notes', '').strip()[:500]))
-            flash('Your availability is saved.')
-            return redirect(url_for('band_calendar', day=day))
+                    notes = request.form.get('notes', '').strip()[:500]
+                    conn.executemany('INSERT OR REPLACE INTO availability VALUES (?, ?, ?, ?)',
+                                     [(user_id, (start + timedelta(days=offset)).isoformat(), status, notes)
+                                      for offset in range(days)])
+            flash('Your availability is saved.' if days == 1 else f'Your availability is saved for all {days} days, including the start and end dates.')
+            return redirect(url_for('band_calendar', day=start.isoformat()))
         except (ValueError, KeyError):
-            abort(400)
+            abort(400, description='Choose valid start and end dates, with the end on or after the start, up to 366 days per save, and a valid availability status.')
 
     @app.post('/admin/rehearsals/save')
     @admin_only

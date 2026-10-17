@@ -81,6 +81,38 @@ class CalendarTest(unittest.TestCase):
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM availability').fetchone()[0], 0)
         self.assertEqual(self.post(self.member, '/admin/availability', {'day': 'bad', 'status': 'available'}).status_code, 400)
 
+    def test_vacation_range_includes_both_dates_and_crosses_months(self):
+        self.post(self.other, '/admin/availability', {'day': '2099-08-01', 'status': 'available'})
+        result = self.post(self.member, '/admin/availability', {
+            'day': '2099-07-29', 'end_day': '2099-08-04', 'status': 'unavailable',
+            'notes': 'Vacation', 'user_id': self.ids['rob']})
+        self.assertEqual(result.status_code, 302)
+        with self.db() as conn:
+            rows = conn.execute('SELECT day, status, notes FROM availability WHERE user_id=? ORDER BY day',
+                                (self.ids['rachel'],)).fetchall()
+            self.assertEqual(len(rows), 7)
+            self.assertEqual(rows[0], ('2099-07-29', 'unavailable', 'Vacation'))
+            self.assertEqual(rows[-1], ('2099-08-04', 'unavailable', 'Vacation'))
+            self.assertEqual(conn.execute('SELECT status FROM availability WHERE user_id=?', (self.ids['rob'],)).fetchone()[0], 'available')
+        for day in ('2099-07-29', '2099-08-04'):
+            self.assertIn('Vacation', self.other.get('/admin/calendar?day=' + day).get_data(as_text=True))
+        self.post(self.member, '/admin/availability', {'day': '2099-07-31', 'end_day': '2099-08-02', 'status': 'maybe', 'notes': 'Evenings only'})
+        self.post(self.member, '/admin/availability', {'day': '2099-08-01', 'end_day': '2099-08-04', 'status': 'unknown'})
+        with self.db() as conn:
+            rows = conn.execute('SELECT day, status, notes FROM availability WHERE user_id=? ORDER BY day', (self.ids['rachel'],)).fetchall()
+            self.assertEqual(len(rows), 3)
+            self.assertEqual(rows[-1], ('2099-07-31', 'maybe', 'Evenings only'))
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM availability WHERE user_id=?', (self.ids['rob'],)).fetchone()[0], 1)
+
+    def test_invalid_ranges_do_not_partially_change_availability(self):
+        self.post(self.member, '/admin/availability', {'day': '2099-07-14', 'status': 'available'})
+        for start, end in [('2099-07-15', '2099-07-14'), ('2099-07-14', 'not-a-date'),
+                           ('2099-07-14', '2101-07-14')]:
+            self.assertEqual(self.post(self.member, '/admin/availability', {
+                'day': start, 'end_day': end, 'status': 'unavailable'}).status_code, 400)
+        with self.db() as conn:
+            self.assertEqual(conn.execute('SELECT day,status FROM availability').fetchall(), [('2099-07-14', 'available')])
+
     def test_rehearsal_crud_conflicts_gigs_and_private_notes(self):
         self.post(self.owner, '/admin/rehearsals/save', self.rehearsal())
         self.post(self.member, '/admin/availability', {'day': '2099-07-14', 'status': 'unavailable'})
