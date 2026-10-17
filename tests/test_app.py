@@ -24,12 +24,12 @@ class BandSiteTest(unittest.TestCase):
         return re.search(r'name="csrf" value="([^"]+)"', html)[1]
 
     def login(self):
-        return self.client.post('/admin/login', data={'csrf': self.token('/admin/login'), 'password': 'a-long-test-password'})
+        return self.client.post('/admin/login', data={'csrf': self.token('/admin/login'), 'username': 'joe', 'password': 'a-long-test-password'})
 
     def test_private_dashboard_and_csrf(self):
         self.assertEqual(self.client.get('/admin').status_code, 302)
         self.assertEqual(self.client.post('/admin/save/gig', data={}).status_code, 400)
-        self.assertEqual(self.client.post('/admin/login', data={'csrf': self.token('/admin/login'), 'password': 'wrong'}).status_code, 401)
+        self.assertEqual(self.client.post('/admin/login', data={'csrf': self.token('/admin/login'), 'username': 'joe', 'password': 'wrong'}).status_code, 401)
         self.assertEqual(self.login().status_code, 302)
         self.assertEqual(self.client.get('/admin').status_code, 200)
 
@@ -62,7 +62,7 @@ class BandSiteTest(unittest.TestCase):
 
     def test_login_rate_limit(self):
         for _ in range(10):
-            self.client.post('/admin/login', data={'csrf': self.token('/admin/login'), 'password': 'incorrect'})
+            self.client.post('/admin/login', data={'csrf': self.token('/admin/login'), 'username': 'joe', 'password': 'incorrect'})
         self.assertEqual(self.login().status_code, 429)
 
     def test_supplied_videos_persist_and_deleted_video_stays_deleted(self):

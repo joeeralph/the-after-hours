@@ -10,6 +10,7 @@ from urllib.parse import urlparse, parse_qs
 
 import click
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
+from band_admin import initialize_accounts, register_band_admin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -21,13 +22,14 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
     data = Path(app.config['DATA_DIR'])
-    data.mkdir(parents=True, exist_ok=True)
+    data.mkdir(parents=True, exist_ok=True, mode=0o700)
     key = data / 'session.key'
     if not key.exists():
         with key.open('x') as f:
             os.chmod(key, 0o600)
             f.write(secrets.token_hex(32))
     app.secret_key = key.read_text().strip()
+    app.config['DUMMY_PASSWORD_HASH'] = generate_password_hash(secrets.token_urlsafe(32))
 
     def db():
         connection = sqlite3.connect(data / 'band.sqlite3')
@@ -53,6 +55,7 @@ def create_app(test_config=None):
                     conn.execute('INSERT INTO videos(title, video_id, is_short) VALUES (?, ?, ?)',
                                  (title, video_id, is_short))
             conn.execute("INSERT INTO settings VALUES ('initial_videos_added', '1')")
+        initialize_accounts(conn, data / 'admin.hash')
 
     def settings():
         with db() as conn:
@@ -81,13 +84,36 @@ def create_app(test_config=None):
         if request.path.startswith('/admin'):
             response.headers['Cache-Control'] = 'no-store'
             response.headers['X-Robots-Tag'] = 'noindex, nofollow'
+            response.headers['Referrer-Policy'] = 'no-referrer'
         return response
+
+    def current_user():
+        if not session.get('user_id'):
+            return None
+        with db() as conn:
+            user = conn.execute('SELECT * FROM users WHERE id=? AND active=1', (session['user_id'],)).fetchone()
+        if not user or not user['password_hash'] or user['version'] != session.get('version'):
+            return None
+        return user
+
+    @app.context_processor
+    def account_context():
+        return {'current_account': current_user()}
 
     def private(view):
         @wraps(view)
         def wrapped(*args, **kwargs):
-            if not session.get('admin'):
+            if not current_user():
                 return redirect(url_for('login'))
+            return view(*args, **kwargs)
+        return wrapped
+
+    def admin_only(view):
+        @wraps(view)
+        @private
+        def wrapped(*args, **kwargs):
+            if current_user()['role'] != 'admin':
+                abort(403)
             return view(*args, **kwargs)
         return wrapped
 
@@ -114,12 +140,20 @@ def create_app(test_config=None):
                 attempt = conn.execute('SELECT * FROM login_attempts WHERE address=?', (address,)).fetchone()
                 if attempt and now - attempt['started'] < 900 and attempt['count'] >= 10:
                     return render_template('login.html', error='Too many attempts. Please try again in 15 minutes.'), 429
-                password_file = data / 'admin.hash'
-                if password_file.exists() and check_password_hash(password_file.read_text().strip(), request.form.get('password', '')):
+                # Migrate an existing owner password without creating a shared login.
+                initialize_accounts(conn, data / 'admin.hash')
+                username = request.form.get('username', '').strip().lower()
+                user = conn.execute('SELECT * FROM users WHERE username=? AND active=1', (username,)).fetchone()
+                password = request.form.get('password', '')
+                # Always perform a password hash check, including unknown accounts.
+                password_hash = user['password_hash'] if user and user['password_hash'] else app.config['DUMMY_PASSWORD_HASH']
+                valid = check_password_hash(password_hash, password)
+                if user and user['password_hash'] and valid:
                     conn.execute('DELETE FROM login_attempts WHERE address=?', (address,))
                     session.clear()
-                    session['admin'] = True
-                    return redirect(url_for('admin'))
+                    session['user_id'] = user['id']
+                    session['version'] = user['version']
+                    return redirect(url_for('admin') if user['role'] == 'admin' else url_for('band_calendar'))
                 if not attempt or now - attempt['started'] >= 900:
                     conn.execute('INSERT OR REPLACE INTO login_attempts VALUES (?, 1, ?)', (address, now))
                 else:
@@ -136,13 +170,15 @@ def create_app(test_config=None):
     @app.get('/admin')
     @private
     def admin():
+        if current_user()['role'] != 'admin':
+            return redirect(url_for('band_calendar'))
         with db() as conn:
             gigs = conn.execute('SELECT * FROM gigs ORDER BY day').fetchall()
             videos = conn.execute('SELECT * FROM videos ORDER BY id DESC').fetchall()
         return render_template('admin.html', gigs=gigs, videos=videos, settings=settings())
 
     @app.post('/admin/save/<kind>')
-    @private
+    @admin_only
     def save(kind):
         try:
             with db() as conn:
@@ -192,7 +228,7 @@ def create_app(test_config=None):
         return redirect(url_for('admin'))
 
     @app.post('/admin/delete/<kind>/<int:item_id>')
-    @private
+    @admin_only
     def delete(kind, item_id):
         if kind not in ('gigs', 'videos'):
             abort(404)
@@ -208,9 +244,12 @@ def create_app(test_config=None):
         confirmation = getpass.getpass('Confirm password: ')
         if len(password) < 12 or password != confirmation:
             raise click.ClickException('Passwords must match and contain at least 12 characters.')
-        path = data / 'admin.hash'
-        path.write_text(generate_password_hash(password))
-        path.chmod(0o600)
-        click.echo('Administrator password saved.')
+        with db() as conn:
+            conn.execute("UPDATE users SET password_hash=?, active=1, version=version+1, setup_hash=NULL, setup_expires=NULL WHERE username='joe'", (generate_password_hash(password),))
+        legacy = data / 'admin.hash'
+        if legacy.exists():
+            legacy.unlink()
+        click.echo('Administrator password saved. Sign in with username: joe')
 
+    register_band_admin(app, db, current_user, private, admin_only)
     return app

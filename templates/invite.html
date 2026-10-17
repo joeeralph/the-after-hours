@@ -1,0 +1,3 @@
+{% extends 'private.html' %}{% block title %} · Private setup link{% endblock %}{% block content %}
+<h1>Invite {{ member.name }}.</h1><p>Share this link privately with {{ member.name }}. It lets them set a password for username <strong>{{ member.username }}</strong>.</p><label>Private setup link<input readonly value="{{ setup_url }}" aria-describedby="link-help"></label><p id="link-help">Select and copy the full link, then send it directly to this musician. It expires in 24 hours and works only once. Do not post it publicly.</p><p>No message has been sent automatically.</p><a class="outline" href="{{ url_for('accounts') }}">Back to accounts</a>
+{% endblock %}
