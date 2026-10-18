@@ -11,6 +11,7 @@ from urllib.parse import urlparse, parse_qs
 import click
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from band_admin import initialize_accounts, register_band_admin
+from setlists import initialize_setlists, register_setlists
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -34,6 +35,7 @@ def create_app(test_config=None):
     def db():
         connection = sqlite3.connect(data / 'band.sqlite3')
         connection.row_factory = sqlite3.Row
+        connection.execute('PRAGMA foreign_keys=ON')
         return connection
 
     with db() as conn:
@@ -56,6 +58,7 @@ def create_app(test_config=None):
                                  (title, video_id, is_short))
             conn.execute("INSERT INTO settings VALUES ('initial_videos_added', '1')")
         initialize_accounts(conn, data / 'admin.hash')
+        initialize_setlists(conn)
 
     def settings():
         with db() as conn:
@@ -252,4 +255,5 @@ def create_app(test_config=None):
         click.echo('Administrator password saved. Sign in with username: joe')
 
     register_band_admin(app, db, current_user, private, admin_only)
+    register_setlists(app, db, current_user, private, admin_only)
     return app

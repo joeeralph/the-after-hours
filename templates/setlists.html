@@ -1,0 +1,4 @@
+{% extends 'private.html' %}{% block title %} · Gig setlists{% endblock %}{% block content %}
+<h1>A great set. Every gig.</h1><p class="muted">Private setlists for upcoming and past gigs. Joe and Rob can build sets from the song list or copy another gig. Everyone in the band can view them.</p>
+{% for gig in gigs %}<article class="song-card"><div class="song-heading"><div><h2>{{ gig.venue }}</h2><p>{{ gig.day }} · {{ gig.location }}</p><p class="small">{{ gig.song_count }} songs</p></div><a class="outline" href="{{ url_for('gig_setlist', gig_id=gig.id) }}">Open setlist →</a></div></article>{% else %}<p class="empty">No gigs yet. An administrator can add a gig in the Website dashboard, then build its setlist here.</p>{% endfor %}
+{% endblock %}

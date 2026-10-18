@@ -46,3 +46,9 @@ This checkout is a development version; domain, hosting, HTTPS, real band assets
 ## Private song lists
 
 Open **Song lists** from the dashboard or calendar navigation. All signed-in members can view and search the ready-to-play **Song list** and **Working list** (songs being learned or rehearsed). Joe and Rob can add, edit, move and delete songs. Entries have title, artist, key, lead vocalist, an optional HTTPS reference link and shared band notes. Change the List field to move a song without losing its details. The lists are stored on the persistent disk and are never published on the homepage.
+
+## Gig setlists
+
+Open **Setlists**, select a gig, and add ready-to-play songs from the Song list. Joe and Rob can add multiple songs to numbered sets, edit each song's position or set, and customize its key, vocalist and notes for that gig. Members can view but cannot edit. Setlists stay private and can be printed or saved as PDF using the browser's Print menu.
+
+Copy any other gig's setlist as a starting point, including past gigs. Replacing a nonempty setlist requires confirmation. Each entry stores a copy of the song details, so changing or deleting a repertoire song does not erase a prior gig's setlist, and editing a copied setlist does not change its source. Deleting a gig also deletes that gig's setlist. The persistent database is upgraded automatically without resetting existing gigs, accounts, availability or songs.
