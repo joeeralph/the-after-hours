@@ -1,0 +1,5 @@
+{% extends 'private.html' %}{% block title %} · Edit song{% endblock %}{% block content %}
+<h1>{{ 'Edit song.' if item_id else 'Add a song.' }}</h1><p class="muted">Change the list to move a song between the working list and ready-to-play repertoire.</p>{% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
+<form action="{{ url_for('save_song') }}" method="post" class="editor">{{ token() }}{% if item_id %}<input type="hidden" name="id" value="{{ item_id }}">{% endif %}{% include 'song_fields.html' %}<button>Save song</button> <a class="outline" href="{{ url_for('songs') }}">Back to lists</a></form>
+{% if item_id %}<details class="private-panel"><summary>Remove this song</summary><form action="{{ url_for('delete_song', item_id=item_id) }}" method="post">{{ token() }}<label class="confirm"><input type="checkbox" required> Permanently delete this song and its notes</label><button class="danger">Delete song</button></form></details>{% endif %}
+{% endblock %}

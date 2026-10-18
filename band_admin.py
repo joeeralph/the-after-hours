@@ -5,6 +5,7 @@ import secrets
 import time
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
+from urllib.parse import urlparse
 
 from flask import abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -33,6 +34,11 @@ def initialize_accounts(conn, legacy_password):
             user_id INTEGER NOT NULL REFERENCES users(id), day TEXT NOT NULL,
             status TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '',
             PRIMARY KEY(user_id, day));
+        CREATE TABLE IF NOT EXISTS songs (
+            id INTEGER PRIMARY KEY, title TEXT NOT NULL, artist TEXT NOT NULL DEFAULT '',
+            song_key TEXT NOT NULL DEFAULT '', lead TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL CHECK(status IN ('ready', 'working')),
+            reference TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '');
     ''')
     for username, name, role in MEMBERS:
         conn.execute('INSERT OR IGNORE INTO users(username, name, role) VALUES (?, ?, ?)',
@@ -43,6 +49,76 @@ def initialize_accounts(conn, legacy_password):
 
 
 def register_band_admin(app, db, current_user, private, admin_only):
+    @app.get('/admin/songs')
+    @private
+    def songs():
+        query = request.args.get('q', '').strip()[:160]
+        with db() as conn:
+            rows = conn.execute('SELECT * FROM songs ORDER BY title COLLATE NOCASE, artist COLLATE NOCASE, id').fetchall()
+        if query:
+            rows = [song for song in rows if query.casefold() in ' '.join(
+                (song['title'], song['artist'], song['lead'], song['notes'])).casefold()]
+        return render_template('songs.html', songs=rows, query=query)
+
+    @app.post('/admin/songs/save')
+    @admin_only
+    def save_song():
+        try:
+            item_id = int(request.form['id']) if request.form.get('id') else None
+            if item_id is not None and item_id < 1:
+                raise ValueError
+        except ValueError:
+            abort(400)
+        fields = ('title', 'artist', 'song_key', 'lead', 'status', 'reference', 'notes')
+        values = {name: request.form.get(name, '').strip() for name in fields}
+        error = None
+        if not values['title'] or len(values['title']) > 160:
+            error = 'Enter a song title of up to 160 characters.'
+        elif values['status'] not in ('ready', 'working'):
+            error = 'Choose Song list or Working list.'
+        elif any(len(values[name]) > maximum for name, maximum in
+                 [('artist', 160), ('song_key', 40), ('lead', 160), ('reference', 2000), ('notes', 4000)]):
+            error = 'One of the fields is too long. Please shorten it and try again.'
+        elif values['reference']:
+            try:
+                parsed = urlparse(values['reference'])
+                if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password:
+                    error = 'Use a full HTTPS reference link, without a username or password.'
+            except ValueError:
+                error = 'Use a valid HTTPS reference link.'
+        if error:
+            return render_template('song_form.html', song=values, item_id=item_id, error=error), 400
+        with db() as conn:
+            if item_id:
+                result = conn.execute('UPDATE songs SET title=?, artist=?, song_key=?, lead=?, status=?, reference=?, notes=? WHERE id=?',
+                                      (*[values[name] for name in fields], item_id))
+                if result.rowcount != 1:
+                    abort(404)
+            else:
+                conn.execute('INSERT INTO songs(title, artist, song_key, lead, status, reference, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                             [values[name] for name in fields])
+        flash('Song saved. The band can see it in the private song lists.')
+        return redirect(url_for('songs', _anchor=values['status']))
+
+    @app.get('/admin/songs/<int:item_id>/edit')
+    @admin_only
+    def edit_song(item_id):
+        with db() as conn:
+            song = conn.execute('SELECT * FROM songs WHERE id=?', (item_id,)).fetchone()
+        if not song:
+            abort(404)
+        return render_template('song_form.html', song=song, item_id=item_id)
+
+    @app.post('/admin/songs/<int:item_id>/delete')
+    @admin_only
+    def delete_song(item_id):
+        with db() as conn:
+            result = conn.execute('DELETE FROM songs WHERE id=?', (item_id,))
+            if result.rowcount != 1:
+                abort(404)
+        flash('Song removed from the private lists.')
+        return redirect(url_for('songs'))
+
     def today():
         return datetime.now(ZoneInfo('America/Los_Angeles')).date()
 

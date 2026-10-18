@@ -42,3 +42,7 @@ For a proposed Render deployment with a temporary HTTPS address, see [DEPLOY.md]
 Run `.venv/bin/gunicorn 'app:create_app()' --bind 0.0.0.0:3000 --workers 1` behind an HTTPS reverse proxy. Set `BAND_HTTPS=1` for secure session cookies on the HTTPS deployment (leave unset for local HTTP). Keep the app on a persistent disk: `data/` contains the SQLite database (including individual password hashes and private calendar information) and session signing key. Back up this directory securely, restrict its permissions, and never expose it as static files. Optionally set `BAND_DATA_DIR` to an absolute persistent directory. Do not use an ephemeral/serverless filesystem. The login rate limit uses the direct client address; configure trusted reverse-proxy handling before deployment so visitors have distinct addresses.
 
 This checkout is a development version; domain, hosting, HTTPS, real band assets and the administrator password must be configured before launch. Production deployment has not been tested.
+
+## Private song lists
+
+Open **Song lists** from the dashboard or calendar navigation. All signed-in members can view and search the ready-to-play **Song list** and **Working list** (songs being learned or rehearsed). Joe can add, edit, move and delete songs. Entries have title, artist, key, lead vocalist, an optional HTTPS reference link and shared band notes. Change the List field to move a song without losing its details. The lists are stored on the persistent disk and are never published on the homepage.
