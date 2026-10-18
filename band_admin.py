@@ -63,6 +63,10 @@ def initialize_accounts(conn, legacy_password):
 
 
 def register_band_admin(app, db, current_user, private, admin_only):
+    app.jinja_env.globals['rehearsal_time_choices'] = [
+        (f'{hour:02d}:{minute:02d}', f'{hour % 12 or 12}:{minute:02d} {"AM" if hour < 12 else "PM"}')
+        for hour in range(24) for minute in range(0, 60, 15)
+    ]
     @app.get('/admin/songs')
     @private
     def songs():

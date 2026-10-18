@@ -170,6 +170,21 @@ class CalendarTest(unittest.TestCase):
         with self.db() as conn:
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM rehearsals').fetchone()[0], 5)
 
+    def test_rehearsal_time_dropdowns_have_defaults_and_preserve_saved_times(self):
+        page = self.owner.get('/admin/calendar').get_data(as_text=True)
+        self.assertIn('<select name="start" required>', page)
+        self.assertIn('<select name="finish" required>', page)
+        self.assertRegex(page, r'value="19:00" selected>7:00 PM</option>')
+        self.assertRegex(page, r'value="22:30" selected>10:30 PM</option>')
+        self.post(self.owner, '/admin/rehearsals/save', self.rehearsal(start='18:15', finish='20:45'))
+        page = self.owner.get('/admin/calendar?day=2099-07-14').get_data(as_text=True)
+        self.assertRegex(page, r'value="18:15" selected>6:15 PM</option>')
+        self.assertRegex(page, r'value="20:45" selected>8:45 PM</option>')
+        self.post(self.owner, '/admin/rehearsals/save', self.rehearsal(id='1', start='18:10', finish='20:40'))
+        page = self.owner.get('/admin/calendar?day=2099-07-14').get_data(as_text=True)
+        self.assertIn('<option value="18:10" selected>', page)
+        self.assertIn('<option value="20:40" selected>', page)
+
     def test_setup_links_are_one_use_and_reset_revokes_existing_sessions(self):
         invite = self.post(self.owner, f"/admin/accounts/{self.ids['rachel']}/invite")
         link = re.search(r'value="(http[^"]+/admin/setup/[^"]+)"', invite.get_data(as_text=True))[1]
