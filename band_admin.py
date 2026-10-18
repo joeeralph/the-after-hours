@@ -32,6 +32,13 @@ def rehearsal_time(value):
     raise ValueError('Enter a time such as 7:00 PM or 19:00.')
 
 
+def display_time(value):
+    try:
+        return datetime.strptime(rehearsal_time(value), '%H:%M').strftime('%I:%M %p').lstrip('0')
+    except ValueError:
+        return value
+
+
 def initialize_accounts(conn, legacy_password):
     conn.executescript('''
         CREATE TABLE IF NOT EXISTS users (
@@ -63,6 +70,7 @@ def initialize_accounts(conn, legacy_password):
 
 
 def register_band_admin(app, db, current_user, private, admin_only):
+    app.jinja_env.filters['band_time'] = display_time
     app.jinja_env.globals['rehearsal_time_choices'] = [
         (f'{hour:02d}:{minute:02d}', f'{hour % 12 or 12}:{minute:02d} {"AM" if hour < 12 else "PM"}')
         for hour in range(24) for minute in range(0, 60, 15)
@@ -164,7 +172,7 @@ def register_band_admin(app, db, current_user, private, admin_only):
         availability = {(r['day'], r['user_id']): dict(r) for r in responses}
         events = {}
         for rehearsal in rehearsals:
-            events.setdefault(rehearsal['day'], []).append({'label': rehearsal['start'] + ' Rehearsal', 'kind': 'rehearsal'})
+            events.setdefault(rehearsal['day'], []).append({'label': display_time(rehearsal['start']) + ' Rehearsal', 'kind': 'rehearsal'})
         for gig in gigs:
             events.setdefault(gig['day'], []).append({'label': gig['venue'], 'kind': 'gig'})
         cells = []

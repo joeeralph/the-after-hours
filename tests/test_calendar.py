@@ -138,7 +138,7 @@ class CalendarTest(unittest.TestCase):
         self.post(self.member, '/admin/availability', {'day': '2099-07-14', 'status': 'unavailable'})
         self.post(self.owner, '/admin/save/gig', {'day': '2099-07-14', 'venue': 'Public Gig', 'location': 'SF'})
         page = self.member.get('/admin/calendar?day=2099-07-14').get_data(as_text=True)
-        for text in ['Private rehearsal studio', 'Private set list notes', 'Rachel Tsacle: Unavailable', 'Public Gig', '18:30–21:00']:
+        for text in ['Private rehearsal studio', 'Private set list notes', 'Rachel Tsacle: Unavailable', 'Public Gig', '6:30 PM–9:00 PM']:
             self.assertIn(text, page)
         public = self.owner.get('/').get_data(as_text=True)
         self.assertIn('Public Gig', public)
@@ -182,8 +182,13 @@ class CalendarTest(unittest.TestCase):
         self.assertRegex(page, r'value="20:45" selected>8:45 PM</option>')
         self.post(self.owner, '/admin/rehearsals/save', self.rehearsal(id='1', start='18:10', finish='20:40'))
         page = self.owner.get('/admin/calendar?day=2099-07-14').get_data(as_text=True)
-        self.assertIn('<option value="18:10" selected>', page)
-        self.assertIn('<option value="20:40" selected>', page)
+        self.assertIn('<option value="18:10" selected>6:10 PM</option>', page)
+        self.assertIn('<option value="20:40" selected>8:40 PM</option>', page)
+        self.post(self.owner, '/admin/rehearsals/save', self.rehearsal(id='1', start='19:30', finish='22:30'))
+        page = self.member.get('/admin/calendar?day=2099-07-14').get_data(as_text=True)
+        self.assertIn('7:30 PM Rehearsal', page)
+        self.assertIn('7:30 PM–10:30 PM', page)
+        self.assertNotIn('19:30', page)
 
     def test_setup_links_are_one_use_and_reset_revokes_existing_sessions(self):
         invite = self.post(self.owner, f"/admin/accounts/{self.ids['rachel']}/invite")

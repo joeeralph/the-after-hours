@@ -1,5 +1,5 @@
 {% macro time_menu(name, label, value) %}
-<label>{{ label }}<select name="{{ name }}" required>{% if value not in rehearsal_time_choices|map(attribute=0)|list %}<option value="{{ value }}" selected>{{ value or 'Choose a time' }}</option>{% endif %}{% for stored, displayed in rehearsal_time_choices %}<option value="{{ stored }}" {% if stored == value %}selected{% endif %}>{{ displayed }}</option>{% endfor %}</select></label>
+<label>{{ label }}<select name="{{ name }}" required>{% if value not in rehearsal_time_choices|map(attribute=0)|list %}<option value="{{ value }}" selected>{{ value|band_time if value else 'Choose a time' }}</option>{% endif %}{% for stored, displayed in rehearsal_time_choices %}<option value="{{ stored }}" {% if stored == value %}selected{% endif %}>{{ displayed }}</option>{% endfor %}</select></label>
 {% endmacro %}
 {% macro rehearsal_form(r=None) %}
 <form action="{{ url_for('save_rehearsal') }}" method="post" class="editor"><input type="hidden" name="csrf" value="{{ csrf_token() }}">{% if r and r.id %}<input type="hidden" name="id" value="{{ r.id }}">{% endif %}
