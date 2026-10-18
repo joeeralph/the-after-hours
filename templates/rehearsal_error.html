@@ -1,0 +1,4 @@
+{% extends 'private.html' %}{% from 'rehearsal_form.html' import rehearsal_form with context %}
+{% block title %} · Check rehearsal details{% endblock %}{% block content %}
+<h1>Check the rehearsal details.</h1><p class="notice" role="alert">{{ error }}</p><p>Your rehearsal hasn’t been saved yet. Your entries are kept below so you can correct them.</p>{{ rehearsal_form(draft) }}<a class="outline" href="{{ url_for('band_calendar') }}">Back to calendar</a>
+{% endblock %}

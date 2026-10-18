@@ -1,0 +1,6 @@
+{% macro rehearsal_form(r=None) %}
+<form action="{{ url_for('save_rehearsal') }}" method="post" class="editor"><input type="hidden" name="csrf" value="{{ csrf_token() }}">{% if r and r.id %}<input type="hidden" name="id" value="{{ r.id }}">{% endif %}
+<label>Date<input type="date" name="day" value="{{ r.day if r else selected.isoformat() }}" required></label>
+<div class="form-pair"><label>Start time<input type="text" name="start" placeholder="7:00 PM" maxlength="20" value="{{ r.start if r else '' }}" required></label><label>End time (same day)<input type="text" name="finish" placeholder="9:00 PM" maxlength="20" value="{{ r.finish if r else '' }}" required></label></div><p class="small">Use AM/PM (7:00 PM) or 24-hour time (19:00). All times are San Francisco time.</p>
+<label>Location<input name="location" value="{{ r.location if r else '' }}" maxlength="200" required></label><label>Notes<textarea name="notes" maxlength="2000" rows="3">{{ r.notes if r else '' }}</textarea></label><button>{{ 'Save rehearsal changes' if r and r.id else 'Add rehearsal' }}</button></form>
+{% endmacro %}

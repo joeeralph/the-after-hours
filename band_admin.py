@@ -21,6 +21,17 @@ MEMBERS = [
 ]
 
 
+def rehearsal_time(value):
+    """Accept ordinary AM/PM entry as well as 24-hour times."""
+    normalized = ''.join(value.strip().upper().split()).replace('.', '')
+    for pattern in ('%I:%M%p', '%I%p', '%H:%M'):
+        try:
+            return datetime.strptime(normalized, pattern).strftime('%H:%M')
+        except ValueError:
+            pass
+    raise ValueError('Enter a time such as 7:00 PM or 19:00.')
+
+
 def initialize_accounts(conn, legacy_password):
     conn.executescript('''
         CREATE TABLE IF NOT EXISTS users (
@@ -193,13 +204,19 @@ def register_band_admin(app, db, current_user, private, admin_only):
     @app.post('/admin/rehearsals/save')
     @admin_only
     def save_rehearsal():
+        draft = {name: request.form.get(name, '') for name in ('id', 'day', 'start', 'finish', 'location', 'notes')}
         try:
-            day = date.fromisoformat(request.form['day']).isoformat()
-            start = datetime.strptime(request.form['start'], '%H:%M').strftime('%H:%M')
-            finish = datetime.strptime(request.form['finish'], '%H:%M').strftime('%H:%M')
+            try:
+                day = date.fromisoformat(draft['day']).isoformat()
+            except ValueError:
+                raise ValueError('Choose a valid rehearsal date.') from None
+            start = rehearsal_time(draft['start'])
+            finish = rehearsal_time(draft['finish'])
             location = request.form['location'].strip()[:200]
-            if finish <= start or not location:
-                raise ValueError
+            if not location:
+                raise ValueError('Enter the rehearsal location.')
+            if finish <= start:
+                raise ValueError('The end time must be later than the start time on the same day. Check AM and PM for both times.')
             values = (day, start, finish, location, request.form.get('notes', '').strip()[:2000])
             with db() as conn:
                 if request.form.get('id'):
@@ -211,9 +228,9 @@ def register_band_admin(app, db, current_user, private, admin_only):
                     conn.execute('INSERT INTO rehearsals(day, start, finish, location, notes) VALUES (?, ?, ?, ?, ?)', values)
             flash('Rehearsal saved. Check the band’s availability below; unanswered dates are not confirmed.')
             return redirect(url_for('band_calendar', day=day))
-        except (ValueError, KeyError):
-            flash('Rehearsal not saved. Enter a valid date, location and end time later than the start time on the same day.')
-            return redirect(url_for('band_calendar'))
+        except (ValueError, KeyError) as error:
+            return render_template('rehearsal_error.html', draft=draft,
+                                   error=str(error) if isinstance(error, ValueError) else 'Complete the rehearsal details.'), 400
 
     @app.post('/admin/rehearsals/<int:item_id>/delete')
     @admin_only

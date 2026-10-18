@@ -1,10 +1,5 @@
 {% extends 'private.html' %}{% block title %} · Band calendar{% endblock %}
-{% macro rehearsal_form(r=None) %}
-<form action="{{ url_for('save_rehearsal') }}" method="post" class="editor">{{ token() }}{% if r %}<input type="hidden" name="id" value="{{ r.id }}">{% endif %}
-<label>Date<input type="date" name="day" value="{{ r.day if r else selected.isoformat() }}" required></label>
-<div class="form-pair"><label>Start time<input type="time" name="start" value="{{ r.start if r else '' }}" required></label><label>End time (same day)<input type="time" name="finish" value="{{ r.finish if r else '' }}" required></label></div>
-<label>Location<input name="location" value="{{ r.location if r else '' }}" maxlength="200" required></label><label>Notes<textarea name="notes" maxlength="2000" rows="3">{{ r.notes if r else '' }}</textarea></label><button>{{ 'Save rehearsal changes' if r else 'Add rehearsal' }}</button></form>
-{% endmacro %}
+{% from 'rehearsal_form.html' import rehearsal_form with context %}
 {% block content %}
 <h1>Find our next night.</h1><p class="muted">Rehearsals, gigs and availability, just for the band. All dates and times are San Francisco time.</p>
 <div class="calendar-heading"><a class="outline" href="{{ url_for('band_calendar', month=previous) }}" aria-label="Previous month">← Previous</a><h2>{{ month.strftime('%B %Y') }}</h2><a class="outline" href="{{ url_for('band_calendar', month=following) }}" aria-label="Next month">Next →</a></div>

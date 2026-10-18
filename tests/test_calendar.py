@@ -152,6 +152,24 @@ class CalendarTest(unittest.TestCase):
         self.post(self.owner, '/admin/rehearsals/1/delete')
         self.assertNotIn('Changed studio', self.member.get('/admin/calendar?day=2099-07-14').get_data(as_text=True))
 
+    def test_rehearsal_accepts_am_pm_and_keeps_details_on_error(self):
+        for start, finish, expected in [('7:00 Pm', '9:00 pm', ('19:00', '21:00')),
+                                        ('7 PM', '9 PM', ('19:00', '21:00')),
+                                        ('19:00', '21:00', ('19:00', '21:00')),
+                                        ('12:00 AM', '12:00 PM', ('00:00', '12:00')),
+                                        ('7:00\u202fPM', '9:00\u00a0PM', ('19:00', '21:00'))]:
+            self.assertEqual(self.post(self.owner, '/admin/rehearsals/save', self.rehearsal(start=start, finish=finish)).status_code, 302)
+            with self.db() as conn:
+                self.assertEqual(conn.execute('SELECT start,finish FROM rehearsals ORDER BY id DESC LIMIT 1').fetchone(), expected)
+        for start, finish in [('7:00 PM', '6:00 PM'), ('25:00', '26:00')]:
+            response = self.post(self.owner, '/admin/rehearsals/save', self.rehearsal(start=start, finish=finish))
+            self.assertEqual(response.status_code, 400)
+            page = response.get_data(as_text=True)
+            for value in [start, finish, 'Private rehearsal studio', 'Private set list notes', '2099-07-14']:
+                self.assertIn(value, page)
+        with self.db() as conn:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM rehearsals').fetchone()[0], 5)
+
     def test_setup_links_are_one_use_and_reset_revokes_existing_sessions(self):
         invite = self.post(self.owner, f"/admin/accounts/{self.ids['rachel']}/invite")
         link = re.search(r'value="(http[^"]+/admin/setup/[^"]+)"', invite.get_data(as_text=True))[1]
