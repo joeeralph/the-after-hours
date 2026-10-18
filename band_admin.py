@@ -13,7 +13,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 MEMBERS = [
     ('rachel', 'Rachel Tsacle', 'member'),
-    ('rob', 'Rob Headlee', 'member'),
+    ('rob', 'Rob Headlee', 'admin'),
     ('bryan', 'Bryan Weinberg', 'member'),
     ('zusje', 'Zusje Helderman', 'member'),
     ('joe', 'Joe Ralph', 'admin'),
@@ -43,6 +43,9 @@ def initialize_accounts(conn, legacy_password):
     for username, name, role in MEMBERS:
         conn.execute('INSERT OR IGNORE INTO users(username, name, role) VALUES (?, ?, ?)',
                      (username, name, role))
+    if not conn.execute("SELECT 1 FROM settings WHERE name='rob_admin_v1'").fetchone():
+        conn.execute("UPDATE users SET role='admin' WHERE username='rob'")
+        conn.execute("INSERT INTO settings VALUES ('rob_admin_v1', '1')")
     if legacy_password.exists():
         conn.execute("UPDATE users SET password_hash=? WHERE username='joe' AND password_hash IS NULL",
                      (legacy_password.read_text().strip(),))
