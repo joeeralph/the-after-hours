@@ -58,6 +58,8 @@ def initialize_accounts(conn, legacy_password):
             status TEXT NOT NULL CHECK(status IN ('ready', 'working')),
             reference TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '');
     ''')
+    if 'bpm' not in {row['name'] for row in conn.execute('PRAGMA table_info(songs)')}:
+        conn.execute('ALTER TABLE songs ADD COLUMN bpm INTEGER CHECK(bpm BETWEEN 1 AND 400)')
     for username, name, role in MEMBERS:
         conn.execute('INSERT OR IGNORE INTO users(username, name, role) VALUES (?, ?, ?)',
                      (username, name, role))
@@ -95,9 +97,14 @@ def register_band_admin(app, db, current_user, private, admin_only):
                 raise ValueError
         except ValueError:
             abort(400)
-        fields = ('title', 'artist', 'song_key', 'lead', 'status', 'reference', 'notes')
+        fields = ('title', 'artist', 'song_key', 'lead', 'status', 'reference', 'notes', 'bpm')
         values = {name: request.form.get(name, '').strip() for name in fields}
         error = None
+        from song_import import parse_bpm
+        try:
+            values['bpm'] = parse_bpm(values['bpm'])
+        except ValueError as exc:
+            error = str(exc)
         if not values['title'] or len(values['title']) > 160:
             error = 'Enter a song title of up to 160 characters.'
         elif values['status'] not in ('ready', 'working'):
@@ -116,12 +123,12 @@ def register_band_admin(app, db, current_user, private, admin_only):
             return render_template('song_form.html', song=values, item_id=item_id, error=error), 400
         with db() as conn:
             if item_id:
-                result = conn.execute('UPDATE songs SET title=?, artist=?, song_key=?, lead=?, status=?, reference=?, notes=? WHERE id=?',
+                result = conn.execute('UPDATE songs SET title=?, artist=?, song_key=?, lead=?, status=?, reference=?, notes=?, bpm=? WHERE id=?',
                                       (*[values[name] for name in fields], item_id))
                 if result.rowcount != 1:
                     abort(404)
             else:
-                conn.execute('INSERT INTO songs(title, artist, song_key, lead, status, reference, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                conn.execute('INSERT INTO songs(title, artist, song_key, lead, status, reference, notes, bpm) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                              [values[name] for name in fields])
         flash('Song saved. The band can see it in the private song lists.')
         return redirect(url_for('songs', _anchor=values['status']))

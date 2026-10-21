@@ -12,6 +12,12 @@ def initialize_setlists(conn):
         title TEXT NOT NULL, artist TEXT NOT NULL, song_key TEXT NOT NULL,
         lead TEXT NOT NULL, notes TEXT NOT NULL)''')
 
+    conn.execute('''CREATE TABLE IF NOT EXISTS song_import_runs (
+        import_key TEXT PRIMARY KEY, gig_id INTEGER REFERENCES gigs(id) ON DELETE CASCADE,
+        row_count INTEGER NOT NULL, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)''')
+    if 'bpm' not in {row['name'] for row in conn.execute('PRAGMA table_info(setlist_entries)')}:
+        conn.execute('ALTER TABLE setlist_entries ADD COLUMN bpm INTEGER CHECK(bpm BETWEEN 1 AND 400)')
+
 
 def register_setlists(app, db, current_user, private, admin_only):
     def gig_or_404(conn, gig_id):
@@ -70,8 +76,8 @@ def register_setlists(app, db, current_user, private, admin_only):
                 selected.append(song)
             position = conn.execute('SELECT COALESCE(MAX(position),0) FROM setlist_entries WHERE gig_id=? AND set_number=?', (gig_id, set_number)).fetchone()[0]
             for offset, song in enumerate(selected, start=1):
-                conn.execute('''INSERT INTO setlist_entries(gig_id,set_number,position,title,artist,song_key,lead,notes)
-                    VALUES (?,?,?,?,?,?,?,?)''', (gig_id, set_number, position + offset, song['title'], song['artist'], song['song_key'], song['lead'], song['notes']))
+                conn.execute('''INSERT INTO setlist_entries(gig_id,set_number,position,title,artist,song_key,lead,notes,bpm)
+                    VALUES (?,?,?,?,?,?,?,?,?)''', (gig_id, set_number, position + offset, song['title'], song['artist'], song['song_key'], song['lead'], song['notes'], song['bpm']))
         flash('Songs added. Use Edit / move to change the order or set.')
         return redirect(url_for('gig_setlist', gig_id=gig_id))
 
@@ -90,8 +96,8 @@ def register_setlists(app, db, current_user, private, admin_only):
             if conn.execute('SELECT 1 FROM setlist_entries WHERE gig_id=?', (gig_id,)).fetchone() and request.form.get('replace') != 'yes':
                 abort(400, description='Confirm replacement before copying over this gig’s current setlist.')
             conn.execute('DELETE FROM setlist_entries WHERE gig_id=?', (gig_id,))
-            conn.executemany('''INSERT INTO setlist_entries(gig_id,set_number,position,title,artist,song_key,lead,notes)
-                VALUES (?,?,?,?,?,?,?,?)''', [(gig_id, row['set_number'], row['position'], row['title'], row['artist'], row['song_key'], row['lead'], row['notes']) for row in entries])
+            conn.executemany('''INSERT INTO setlist_entries(gig_id,set_number,position,title,artist,song_key,lead,notes,bpm)
+                VALUES (?,?,?,?,?,?,?,?,?)''', [(gig_id, row['set_number'], row['position'], row['title'], row['artist'], row['song_key'], row['lead'], row['notes'], row['bpm']) for row in entries])
         flash('Setlist copied. Changes here will not change the original gig’s setlist.')
         return redirect(url_for('gig_setlist', gig_id=gig_id))
 
@@ -103,6 +109,11 @@ def register_setlists(app, db, current_user, private, admin_only):
         song_key, lead, notes = (request.form.get(name, '').strip() for name in ('song_key', 'lead', 'notes'))
         if len(song_key) > 40 or len(lead) > 160 or len(notes) > 4000:
             abort(400, description='The key, vocalist or notes are too long.')
+        from song_import import parse_bpm
+        try:
+            bpm = parse_bpm(request.form.get('bpm', ''))
+        except ValueError as exc:
+            abort(400, description=str(exc))
         with db() as conn:
             gig_or_404(conn, gig_id)
             entry = conn.execute('SELECT * FROM setlist_entries WHERE id=? AND gig_id=?', (entry_id, gig_id)).fetchone()
@@ -116,7 +127,7 @@ def register_setlists(app, db, current_user, private, admin_only):
             for set_id, ids in groups.items():
                 for index, item_id in enumerate(ids, start=1):
                     conn.execute('UPDATE setlist_entries SET set_number=?, position=? WHERE id=? AND gig_id=?', (set_id, index, item_id, gig_id))
-            conn.execute('UPDATE setlist_entries SET song_key=?, lead=?, notes=? WHERE id=? AND gig_id=?', (song_key, lead, notes, entry_id, gig_id))
+            conn.execute('UPDATE setlist_entries SET song_key=?, lead=?, notes=?, bpm=? WHERE id=? AND gig_id=?', (song_key, lead, notes, bpm, entry_id, gig_id))
         flash('Setlist updated. These changes apply only to this gig.')
         return redirect(url_for('gig_setlist', gig_id=gig_id))
 

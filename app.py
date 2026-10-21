@@ -256,4 +256,6 @@ def create_app(test_config=None):
 
     register_band_admin(app, db, current_user, private, admin_only)
     register_setlists(app, db, current_user, private, admin_only)
+    from song_import import register_song_import
+    register_song_import(app, db, admin_only)
     return app

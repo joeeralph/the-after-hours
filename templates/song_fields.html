@@ -1,6 +1,7 @@
 <label>Song title<input name="title" value="{{ song.title if song else '' }}" maxlength="160" required></label>
 <label>Artist / original by<input name="artist" value="{{ song.artist if song else '' }}" maxlength="160" placeholder="Artist name, or The After Hours for an original"></label>
 <div class="form-pair"><label>Key<input name="song_key" value="{{ song.song_key if song else '' }}" maxlength="40" placeholder="e.g. E minor"></label><label>Lead vocalist<input name="lead" value="{{ song.lead if song else '' }}" maxlength="160"></label></div>
+<label>Tempo (BPM)<input type="number" name="bpm" min="1" max="400" step="1" value="{{ song.bpm if song and song.bpm else '' }}" placeholder="Leave blank if unknown"></label>
 <label>List<select name="status"><option value="working" {% if not song or song.status == 'working' %}selected{% endif %}>Working list — learning / rehearsing</option><option value="ready" {% if song and song.status == 'ready' %}selected{% endif %}>Song list — ready to play</option></select></label>
 <label>Reference link (optional)<input type="url" name="reference" value="{{ song.reference if song else '' }}" maxlength="2000" placeholder="https://…"></label>
 <label>Band notes<textarea name="notes" rows="4" maxlength="4000" placeholder="Arrangement, intro, ending, or what to work on next">{{ song.notes if song else '' }}</textarea></label>

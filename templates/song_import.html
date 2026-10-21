@@ -1,0 +1,23 @@
+{% extends 'private.html' %}{% block title %} · Bulk song entry{% endblock %}{% block content %}
+<h1>{{ 'Import the Pt. Reyes PDF' if preset else 'Add a list of songs' }}</h1>
+{% if preset %}<p>The PDF contains 35 rows, including two repeated songs, with no marked set breaks. All rows will be kept in order in set 1. Missing artists, keys, singers and tempos stay blank unless already known in your repertoire. Durations are retained in Notes.</p><p>Select the existing <strong>Old Western Saloon</strong> gig and review its date below. Nothing imports automatically when the site is updated. This import requires an empty setlist and will never replace an existing one.</p>
+{% else %}<p>Paste rows from a spreadsheet (tabs), CSV, or one title per line. Columns: <strong>Title, Artist, Key, Lead singer, BPM, Notes, Set number</strong>. Only Title is required. Set number defaults to 1; increase it at each set break. Up to 100 rows. A Title / Artist header is optional.</p><p>Title matching ignores case, spacing and punctuation. Existing details are preserved; missing fields are filled. Artist conflicts or multiple matches stop the import. Choosing Song list also moves matching Working list songs to ready to play. A gig receives every row in your order, including repeats. Repeating the same import does not add it again.</p>{% endif %}
+{% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
+{% if not preset %}<p><a class="outline" href="{{ url_for('import_songs', preset='pt-reyes') }}">Import the Pt. Reyes PDF →</a></p>{% endif %}
+<form method="post" class="editor">{{ token() }}
+{% if preset %}<input type="hidden" name="preset" value="pt-reyes">{% endif %}
+<label>{{ 'PDF rows' if preset else 'Song rows' }}<textarea name="text" rows="14" {% if preset %}readonly{% endif %} required>{{ text }}</textarea></label>
+{% if not preset %}<label>List<select name="status"><option value="ready" {% if status == 'ready' %}selected{% endif %}>Song list — ready to play</option><option value="working" {% if status == 'working' %}selected{% endif %}>Working list</option></select></label>{% endif %}
+<label>{{ 'Target gig' if preset else 'Also add to a gig' }}<select name="gig_id" {% if preset %}required{% endif %}><option value="">{{ 'Choose Old Western Saloon' if preset else 'Repertoire only' }}</option>{% for gig in gigs %}<option value="{{ gig.id }}" {% if gig_id == gig.id|string %}selected{% endif %}>{{ gig.day }} · {{ gig.venue }} · {{ gig.location }}</option>{% endfor %}</select></label>
+<button name="action" value="preview">Review rows</button>
+{% if plan and not error %}
+{% if plan.already %}<p class="notice">This import was already applied. Saving again will add nothing.</p>
+{% else %}<h2>Review before saving</h2><p>{{ plan.new_count }} new repertoire songs. {{ plan.rows|length }} ordered rows{% if plan.gig %} for <strong>{{ plan.gig.venue }} · {{ plan.gig.day }} · {{ plan.gig.location }}</strong>{% endif %}.</p>
+<p>Existing repertoire details stay unchanged when the pasted value differs. Any supplied gig-specific key, tempo, vocalist or notes will be used in this gig’s independent snapshot. Please review the differences below.</p>
+<div class="calendar-scroll"><table class="import-preview"><thead><tr><th>#</th><th>Set</th><th>Title</th><th>Artist</th><th>Key</th><th>Lead</th><th>BPM</th><th>Notes</th><th>Repertoire changes</th></tr></thead><tbody>{% for row in plan.rows %}<tr><td>{{ loop.index }}</td><td>{{ row.set_number }}</td>{% for key in ['title','artist','song_key','lead','bpm','notes'] %}<td class="preserve-lines">{{ row[key] or '—' }}</td>{% endfor %}<td>{{ row.action }}{% if row.changes %}; fill: {{ row.changes|join(', ') }}{% endif %}{% if row.conflicts %}; keep existing: {{ row.conflicts|join(', ') }}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% if plan.entries %}<label class="confirm"><input type="checkbox" name="append" value="yes" required> Append these rows to the {{ plan.entries|length }} existing setlist entries; leave existing entries unchanged.</label>{% endif %}
+<p>A private database backup is saved before importing. No accounts, passwords, calendar entries or other gig setlists are replaced.</p>{% endif %}
+<input type="hidden" name="preview_token" value="{{ preview_token }}"><button name="action" value="save">{{ 'Finish (already imported)' if plan.already else 'Confirm import' }}</button>
+{% endif %}
+</form><p><a href="{{ url_for('songs') }}">Back to song lists</a></p>
+{% endblock %}

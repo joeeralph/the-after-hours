@@ -1,16 +1,67 @@
-# Preview on Render
+# Update the existing Render service
 
-This is a proposed paid deployment. Review Render's current service and persistent disk prices before confirming deployment. Nothing is deployed merely by committing these files.
+The live site is https://theafterhourssf.com. It already runs on a paid Render
+Python web service with a persistent disk. Update that service; do not create a
+new Blueprint or replace its disk.
 
-1. Sign in at https://dashboard.render.com/ using GitHub.
-2. Create a **Blueprint**, connect GitHub, and grant access to **joeeralph/the-after-hours**. Select that repository and the `main` branch.
-3. Render reads `render.yaml`. Review the Starter web service and 1 GB persistent disk, including their current charges. Approve deployment only if the cost is acceptable. Keep the disk: it stores your gigs, videos and administrator password hash across deployments.
-4. Wait for the service to become live. Open the HTTPS `onrender.com` URL displayed on the service page. The exact address is assigned by Render.
-5. In the service's **Shell**, run `flask --app app:create_app set-admin-password`. Enter and confirm your chosen password when prompted. Use at least 12 characters. It will not be displayed. Never share the password in chat or put it in GitHub.
-6. Open `/admin` on your new site and sign in as `joe` with your chosen password. Add a gig and a YouTube video, then check that each appears on the homepage. Edit and remove them if they were only test entries.
-7. Open **Band accounts** and create a private setup link for each musician. Send each link directly to its intended recipient; no messages are sent automatically. Each person chooses their own password. Links expire after 24 hours and work once. Never share your administrator password. Members can access the private calendar and update their own availability; Joe and Rob can edit the public site, rehearsals and accounts.
-8. Open **Band calendar**, add a rehearsal and check the member availability summary. Sign in with a member account in a separate browser to confirm that member can update their own status. Rehearsals and availability should never appear on the public homepage.
+## Preserve the existing configuration
 
-The site is publicly accessible at the preview address. The dashboard requires your password. Administrator setup is disabled until you set that password in the shell. Keep regular backups of the persistent data directory. A domain name can be connected later.
+- Repository: `joeeralph/the-after-hours`, branch `main`.
+- Build: `pip install -r requirements.lock`.
+- Start: `gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT --workers 1`.
+- `BAND_HTTPS=1`.
+- `BAND_DATA_DIR=/var/data/the-after-hours`.
+- Persistent disk mounted at `/var/data`.
 
-Images and the public homepage work without additional accounts or API keys. YouTube playback depends on the uploaded video's embedding permissions. Production hosting and these steps still need verification on an actual Render account. The current rate limit treats requests from the same proxy as one address, which is conservative but can temporarily block all admin sign-ins after repeated failed attempts; configure trusted proxy headers for the selected hosting topology before wider admin use.
+Keep the production database, session key and existing accounts in place. Do not
+copy the local database to Render, rerun initial password setup, reset accounts,
+or delete/recreate the disk. Never put credentials or setup links in chat or Git.
+The application adds missing BPM columns and an import-history table on startup;
+it does not clear existing records or automatically import any songs.
+
+## Deploy and check the update
+
+1. Run the existing tests locally: `.venv/bin/python -m unittest discover -s tests -v`.
+2. Commit and push the reviewed code to `main`. Render may deploy automatically;
+   this can briefly interrupt the service. If automatic deploys are off, open the
+   **existing service** in Render and deploy the latest commit.
+3. In Render, verify the deployment succeeded and check its logs for startup
+   errors. Open https://theafterhourssf.com and confirm the public homepage loads.
+4. Sign in using your existing Joe or Rob account. In **Song lists**, confirm that
+   **Add a list of songs** and the optional **Tempo (BPM)** field appear. Check the
+   calendar and existing data are still present. Other members can view song
+   details and setlists but cannot import or edit them.
+
+A successful Git push is not proof Render deployed the commit. A successful
+Render deploy is not proof the PDF records have been imported.
+
+## Apply the reviewed Pt. Reyes PDF to production
+
+1. On the live website, sign in as Joe or Rob. Open **Song lists → Add a list of
+   songs → Import the Pt. Reyes PDF**.
+2. Select the existing **Old Western Saloon** gig. A unique venue match is
+   preselected. Check its date and location; do not create a guessed gig.
+3. Click **Review rows**. Confirm 35 entries in PDF order, including “Let’s Go
+   Back” twice and “Fire on the Bayou” twice. There are no marked set breaks in
+   the PDF, so it uses set 1. Unknown details stay blank or come from existing
+   repertoire records. Durations appear in Notes. No artist guesses are supplied.
+4. Review matched songs, missing fields to fill, differences that preserve existing
+   repertoire values, and any moves from Working list to Song list. If the app
+   reports an ambiguous match, resolve it in Song lists and review again. If the
+   gig already has a setlist, stop and review it: this importer will not replace
+   or append to it. Existing data remains untouched on these errors.
+5. Click **Confirm import**. The app saves a private database backup and commits
+   the repertoire updates, ordered snapshots and completion record together.
+6. The app opens the target setlist. Verify **35 songs**, their order, supplied
+   keys/BPM, and both repeated entries. Check Song list for the repertoire songs.
+   That success message and the actual records establish a completed production
+   import. Reopening and confirming the same PDF import adds nothing again.
+
+Backups are stored on the disk at `/var/data/the-after-hours/import-backups/` with
+private permissions. They contain account information and must not be shared,
+committed or served publicly. Keep secure off-disk backups too. Do not restore a
+backup over a running database without a separate reviewed recovery procedure.
+
+This update does not add email notifications or calendar subscriptions. The
+existing direct-address login rate limit still needs trusted proxy configuration
+before changing how client addresses are interpreted.
