@@ -1,7 +1,14 @@
 """Private gig setlists with independent copies of song details."""
+import hashlib
+import json
 from collections import defaultdict
 
 from flask import abort, flash, redirect, render_template, request, url_for
+
+
+def order_version(entries):
+    order = [(row['id'], row['set_number'], row['position']) for row in entries]
+    return hashlib.sha256(json.dumps(order).encode()).hexdigest()
 
 
 def initialize_setlists(conn):
@@ -56,7 +63,53 @@ def register_setlists(app, db, current_user, private, admin_only):
         groups = defaultdict(list)
         for entry in entries:
             groups[entry['set_number']].append(entry)
-        return render_template('setlist.html', gig=gig, groups=groups, songs=songs, sources=sources, song_count=len(entries))
+        return render_template('setlist.html', gig=gig, groups=groups, songs=songs, sources=sources, song_count=len(entries), order_version=order_version(entries))
+
+    @app.get('/admin/gigs/<int:gig_id>/setlist/print')
+    @private
+    def print_setlist(gig_id):
+        with db() as conn:
+            gig = gig_or_404(conn, gig_id)
+            entries = conn.execute('SELECT * FROM setlist_entries WHERE gig_id=? ORDER BY set_number,position,id', (gig_id,)).fetchall()
+        groups = defaultdict(list)
+        for entry in entries:
+            groups[entry['set_number']].append(entry)
+        return render_template('setlist_print.html', gig=gig, groups=groups, song_count=len(entries))
+
+    @app.post('/admin/gigs/<int:gig_id>/setlist/<int:entry_id>/set-break')
+    @admin_only
+    def set_setlist_break(gig_id, entry_id):
+        start_set = request.form.get('start_set')
+        if start_set not in ('yes', 'no'):
+            abort(400, description='Choose whether this song starts a set.')
+        with db() as conn:
+            conn.execute('BEGIN IMMEDIATE')
+            gig_or_404(conn, gig_id)
+            entries = conn.execute('SELECT * FROM setlist_entries WHERE gig_id=? ORDER BY set_number,position,id', (gig_id,)).fetchall()
+            index = next((i for i, row in enumerate(entries) if row['id'] == entry_id), None)
+            if index is None:
+                abort(404)
+            if request.form.get('order_version') != order_version(entries):
+                abort(409, description='The setlist order changed. Reload the setlist before changing a set break.')
+            if index == 0:
+                abort(400, description='The first song already starts the first set.')
+            breaks = {i for i in range(1, len(entries)) if entries[i]['set_number'] != entries[i-1]['set_number']}
+            if start_set == 'yes':
+                breaks.add(index)
+            else:
+                breaks.discard(index)
+            if len(breaks) >= 20:
+                abort(400, description='A setlist can have up to 20 sets.')
+            set_number, position = 1, 0
+            for i, entry in enumerate(entries):
+                if i in breaks:
+                    set_number += 1
+                    position = 0
+                position += 1
+                conn.execute('UPDATE setlist_entries SET set_number=?,position=? WHERE id=? AND gig_id=?',
+                             (set_number, position, entry['id'], gig_id))
+        flash('Set break updated. Song order and song details are unchanged.')
+        return redirect(url_for('gig_setlist', gig_id=gig_id))
 
     @app.post('/admin/gigs/<int:gig_id>/setlist/add')
     @admin_only

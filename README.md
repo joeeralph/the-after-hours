@@ -101,3 +101,18 @@ are committed in one transaction; failures roll back all record changes. Backups
 remain on the persistent disk and contain private account data; do not commit,
 serve, or share them. Arrange secure off-disk backups separately. Production
 accounts/passwords, calendar data and session keys are never reset by this feature.
+
+## Set breaks and printing
+
+On a gig's ordered setlist, Joe or Rob can click **Start next set** beside the
+song that should open the next set. That song and the remaining songs in its
+current set become a new set. Later sets stay in order; nothing is alphabetized
+or copied from the repertoire. **Join previous set**, shown on the first song
+of later sets, removes that break. Sets are numbered consecutively and support
+up to 20 sets. Song details, repeated songs and other gigs remain unchanged.
+If another edit changes the order, reload the page before setting a break.
+
+All band members can open **Printable view / PDF** from a gig setlist. It shows
+just the band/gig heading and ordered tables, with set headings, key, lead singer,
+BPM and notes. Click **Print / Save PDF** to open the browser print dialog.
+The view remains private and includes no editing controls or account navigation.

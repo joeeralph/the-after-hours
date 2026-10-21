@@ -61,3 +61,25 @@
 .compact-song-page>h1{font-size:32px;letter-spacing:-1px;margin:8px 0;line-height:1.1}
 .compact-song-page>p{margin:8px 0}.compact-song-page .song-section{padding-top:12px}
 @media print{.compact-song-page{padding-top:0}.compact-song-page>h1{font-size:22pt}}
+
+.set-break-cell{white-space:nowrap}.set-break-button{display:inline;padding:0;border:0;background:none;color:var(--accent);font:inherit;font-size:12px;line-height:inherit;letter-spacing:0;text-transform:none;text-align:left}
+.set-break-button:hover{text-decoration:underline}
+.print-toolbar{max-width:1000px;margin:24px auto;padding:0 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}.print-toolbar p{flex-basis:100%;margin:0;font-size:13px;color:var(--muted)}
+.print-setlist-page{background:white;color:#111;max-width:1000px;margin:24px auto;padding:32px;font-size:14px;line-height:1.3}
+.print-band-name{font-weight:bold;text-transform:uppercase;letter-spacing:2px;font-size:12px;margin:0 0 6px}
+.print-setlist-page h1{font-size:28px;letter-spacing:-.5px;line-height:1.1;margin:0 0 6px}.print-setlist-page header>p:last-child{margin:0 0 20px}
+.print-setlist-set h2{font-size:18px;margin:18px 0 8px;break-after:avoid}
+.print-setlist-table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:13px}
+.print-setlist-table th,.print-setlist-table td{text-align:left;vertical-align:top;padding:5px 6px;border-bottom:1px solid #ccc;overflow-wrap:anywhere}
+.print-setlist-table thead th{font-size:11px;text-transform:uppercase;background:#eee;color:#333}
+.print-number{width:5%}.print-title{width:34%}.print-artist{width:23%}.print-key{width:8%}.print-lead{width:20%}.print-bpm{width:10%}
+.printed-song-notes{font-weight:normal;font-size:11px;margin:3px 0 0;color:#444}
+@media(max-width:700px){.print-setlist-page{padding:16px;margin:16px 0}.print-setlist-table{font-size:11px}.print-setlist-table th,.print-setlist-table td{padding:5px 3px}.print-setlist-table thead th{font-size:9px}}
+@page{size:letter portrait;margin:12mm}
+@media print{
+ .print-setlist-page{max-width:none;margin:0;padding:0;font-size:11pt;color:black}
+ .print-setlist-page h1{font-size:22pt}.print-setlist-table{font-size:10pt}
+ .print-setlist-table th,.print-setlist-table td{padding:4px 5px}
+ .print-setlist-table thead{display:table-header-group}.print-setlist-table tr{break-inside:avoid}
+ .print-setlist-set h2{font-size:14pt}.printed-song-notes{font-size:8pt}
+}

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}{% block title %} · {{ gig.venue }} · Printable setlist{% endblock %}
+{% block body %}
+<div class="print-toolbar no-print"><a class="outline" href="{{ url_for('gig_setlist', gig_id=gig.id) }}">← Back to setlist</a><button type="button" data-print-setlist>Print / Save PDF</button><p>Use your browser’s print dialog to choose a printer or save as PDF.</p></div>
+<main class="print-setlist-page">
+<header><p class="print-band-name">The After Hours</p><h1>{{ gig.venue }}</h1><p>{{ gig.day }} · {{ gig.location }} · {{ song_count }} songs</p></header>
+{% for set_number, entries in groups.items() %}<section class="print-setlist-set"><h2>Set {{ set_number }}</h2>
+<table class="print-setlist-table"><colgroup><col class="print-number"><col class="print-title"><col class="print-artist"><col class="print-key"><col class="print-lead"><col class="print-bpm"></colgroup>
+<thead><tr><th scope="col">#</th><th scope="col">Song</th><th scope="col">Artist</th><th scope="col">Key</th><th scope="col">Lead singer</th><th scope="col">BPM</th></tr></thead>
+<tbody>{% for entry in entries %}<tr><td>{{ loop.index }}</td><th scope="row">{{ entry.title }}{% if entry.notes %}<p class="printed-song-notes preserve-lines">{{ entry.notes }}</p>{% endif %}</th><td>{{ entry.artist or '—' }}</td><td>{{ entry.song_key or '—' }}</td><td>{{ entry.lead or '—' }}</td><td>{{ entry.bpm or '—' }}</td></tr>{% endfor %}</tbody></table></section>
+{% else %}<p>No setlist for this gig yet.</p>{% endfor %}
+</main><script src="{{ url_for('static', filename='setlist-print.js') }}" defer></script>
+{% endblock %}
