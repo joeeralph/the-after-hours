@@ -116,3 +116,11 @@ All band members can open **Printable view / PDF** from a gig setlist. It shows
 just the band/gig heading and ordered tables, with set headings, key, lead singer,
 BPM and notes. Click **Print / Save PDF** to open the browser print dialog.
 The view remains private and includes no editing controls or account navigation.
+
+Joe and Rob can change the lead singer directly in Song list, Working list, or a
+gig setlist using the **Rachel / Rob / Other** dropdown and **Save**. **Not
+assigned** keeps an unknown singer blank. Existing custom singer values remain
+available as “Other — [existing value]” until explicitly changed. Song editors
+use the same choices. Changing a repertoire singer does not rewrite historical
+gig snapshots; changing a gig singer affects only that entry. Members and printed
+setlists show the saved singer without dropdown controls.

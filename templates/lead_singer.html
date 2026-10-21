@@ -1,0 +1,7 @@
+{% macro lead_select(value, label='Lead singer') -%}
+<select name="lead" aria-label="{{ label }}">
+<option value="" {% if not value %}selected{% endif %}>Not assigned</option>
+{% for singer in ['Rachel', 'Rob', 'Other'] %}<option value="{{ singer }}" {% if value == singer %}selected{% endif %}>{{ singer }}</option>{% endfor %}
+{% if value and value not in ['Rachel', 'Rob', 'Other'] %}<option value="{{ value }}" selected>Other — {{ value }}</option>{% endif %}
+</select>
+{%- endmacro %}

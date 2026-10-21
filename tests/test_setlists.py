@@ -201,3 +201,27 @@ class SetlistsTest(unittest.TestCase):
             self.assertNotIn('Private navigation',page)
             self.assertNotIn('Edit / move',page)
         self.assertEqual(self.member.get('/admin/gigs/99999/setlist/print').status_code,404)
+
+    def test_inline_singer_updates_only_the_selected_snapshot(self):
+        self.post('/admin/gigs/1/setlist/add',set_number='1',song_ids=['1'])
+        self.post('/admin/gigs/2/setlist/copy',source_id='1')
+        before=self.entries()[0]
+        copied=self.entries(2)
+        path=f"/admin/gigs/1/setlist/{before['id']}/lead"
+        for lead in ['Rachel','Rob','Other','']:
+            self.assertEqual(self.post(path,lead=lead,client=self.rob).status_code,302)
+            after=self.entries()[0]
+            self.assertEqual(after['lead'],lead)
+            self.assertEqual({k:v for k,v in after.items() if k!='lead'},{k:v for k,v in before.items() if k!='lead'})
+        self.assertEqual(self.entries(2),copied)
+        self.post('/admin/songs/1/lead',lead='Other')
+        self.assertEqual(self.entries()[0]['lead'],'')
+        self.assertEqual(self.entries(2),copied)
+        self.assertEqual(self.post(path,lead='Nonsense').status_code,400)
+        self.assertEqual(self.post(path,lead='Rob',client=self.member).status_code,403)
+        self.assertEqual(self.owner.post(path,data={'lead':'Rob'}).status_code,400)
+        self.assertEqual(self.post(f"/admin/gigs/2/setlist/{before['id']}/lead",lead='Rob').status_code,404)
+        self.post(path,lead='Rob')
+        page=self.member.get('/admin/gigs/1/setlist/print').get_data(as_text=True)
+        self.assertIn('Rob',page)
+        self.assertNotIn('<select',page)

@@ -270,3 +270,28 @@ class SongListsTest(unittest.TestCase):
         with sqlite3.connect(Path(self.tmp.name,'band.sqlite3')) as conn:
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM songs').fetchone()[0],0)
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM song_import_runs').fetchone()[0],0)
+
+    def test_inline_lead_dropdown_choices_and_preservation(self):
+        self.post(self.owner,'/admin/songs/save',title='Dropdown tune',artist='Artist',song_key='Am',lead='Rachel & Rob',status='ready',bpm='80',notes='Keep notes',reference='https://example.com')
+        page=self.owner.get('/admin/songs').get_data(as_text=True)
+        for value in ['Rachel','Rob','Other']:
+            self.assertIn(f'value="{value}"',page)
+        self.assertIn('Other — Rachel &amp; Rob',page)
+        self.assertIn('inline-lead',page)
+        with sqlite3.connect(Path(self.tmp.name,'band.sqlite3')) as conn:
+            before=conn.execute('SELECT * FROM songs WHERE id=1').fetchone()
+        for value in ['Rachel','Rob','Other','']:
+            self.assertEqual(self.post(self.owner,'/admin/songs/1/lead',lead=value).status_code,302)
+            with sqlite3.connect(Path(self.tmp.name,'band.sqlite3')) as conn:
+                conn.row_factory=sqlite3.Row
+                after=conn.execute('SELECT * FROM songs WHERE id=1').fetchone()
+                self.assertEqual(after['lead'],value)
+                self.assertEqual(tuple(after)[:4],before[:4])
+                self.assertEqual(tuple(after)[5:],before[5:])
+        self.assertEqual(self.post(self.owner,'/admin/songs/1/lead',lead='Unknown new singer').status_code,400)
+        self.assertEqual(self.post(self.owner,'/admin/songs/1/lead').status_code,400)
+        self.assertEqual(self.post(self.member,'/admin/songs/1/lead',lead='Rob').status_code,403)
+        self.assertEqual(self.owner.post('/admin/songs/1/lead',data={'lead':'Rob'}).status_code,400)
+        self.assertEqual(self.post(self.owner,'/admin/songs/999/lead',lead='Rob').status_code,404)
+        self.assertNotIn('inline-lead',self.member.get('/admin/songs').get_data(as_text=True))
+        self.assertIn('<select name="lead"',self.owner.get('/admin/songs/1/edit').get_data(as_text=True))
